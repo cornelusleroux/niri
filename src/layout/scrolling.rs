@@ -2559,17 +2559,22 @@ impl<W: LayoutElement> ScrollingSpace<W> {
     }
 
     pub fn popup_target_rect(&self, id: &W::Id) -> Option<Rectangle<f64, Logical>> {
-        for col in &self.columns {
+        let col_xs = self.column_xs(self.data.iter().copied());
+        for (col, col_x) in zip(&self.columns, col_xs) {
             for (tile, pos) in col.tiles() {
                 if tile.window().id() == id {
                     // In the scrolling layout, we try to position popups horizontally within the
-                    // window geometry (so they remain visible even if the window scrolls flush with
-                    // the left/right edge of the screen), and vertically within the whole parent
-                    // working area.
-                    let width = tile.window_size().w;
+                    // working area (so they can escape the tile column if there is screen space,
+                    // but are still constrained by the screen edges), and vertically within the
+                    // whole parent working area.
+                    let width = self.working_area.size.w;
                     let height = self.parent_area.size.h;
 
                     let mut target = Rectangle::from_size(Size::from((width, height)));
+                    target.loc.x += self.view_pos();
+                    target.loc.x -= col_x;
+                    target.loc.x -= pos.x;
+                    target.loc.x -= tile.window_loc().x;
                     target.loc.y += self.parent_area.loc.y;
                     target.loc.y -= pos.y;
                     target.loc.y -= tile.window_loc().y;
